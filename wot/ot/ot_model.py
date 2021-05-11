@@ -285,13 +285,13 @@ class OTModel:
         p0 = ds[p0_indices, :]
         p1 = ds[p1_indices, :]
 
-        if config['w0'] is None:
+        if 'w0' not in config or config['w0'] is None:
             w0 = np.ones(len(p0)) / len(p0)
             if self.weight_field in ds.obs.columns:
                 w0 = p0.obs['weight'].to_numpy()
             config['w0'] = w0
 
-        if config['w1'] is None:
+        if 'w1' not in config or config['w1'] is None:
             w1 = np.ones(len(p1)) / len(p1)
             if self.weight_field in ds.obs.columns:
                 w1 = p1.obs['weight'].to_numpy()
