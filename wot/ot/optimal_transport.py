@@ -65,7 +65,7 @@ def dual(C, K, R, dx, dy, p, q, a, b, epsilon, lambda1, lambda2):
 # end @ Lénaïc Chizat
 
 def optimal_transport_duality_gap(C, G, lambda1, lambda2, epsilon, batch_size, tolerance, tau,
-                                  epsilon0, max_iter, **ignored):
+                                  epsilon0, max_iter, w0, w1, **ignored):
     """
     Compute the optimal transport with stabilized numerics, with the guarantee that the duality gap is at most `tolerance`
 
@@ -101,8 +101,12 @@ def optimal_transport_duality_gap(C, G, lambda1, lambda2, epsilon, batch_size, t
     epsilon_scalings = 5
     scale_factor = np.exp(- np.log(epsilon) / epsilon_scalings)
 
+    # HERE IS THE CHANGE/EMPIRICAL DISTRIBUTION
+    dx = w0
+    dy = w1
+
     I, J = C.shape
-    dx, dy = np.ones(I) / I, np.ones(J) / J
+    # dx, dy = np.ones(I) / I, np.ones(J) / J
 
     p = G
     q = np.ones(C.shape[1]) * np.average(G)
@@ -161,11 +165,12 @@ def optimal_transport_duality_gap(C, G, lambda1, lambda2, epsilon, batch_size, t
 
     if np.isnan(duality_gap):
         raise RuntimeError("Overflow encountered in duality gap computation, please report this incident")
+    # CHANGE HERE
     return R / C.shape[1]
 
 
 def transport_stablev2(C, lambda1, lambda2, epsilon, scaling_iter, G, tau, epsilon0, extra_iter, inner_iter_max,
-                       **ignored):
+                       w0, w1, **ignored):
     """
     Compute the optimal transport with stabilized numerics.
     Args:
@@ -185,8 +190,12 @@ def transport_stablev2(C, lambda1, lambda2, epsilon, scaling_iter, G, tau, epsil
         return (epsilon0 - epsilon_final) * np.exp(-n) + epsilon_final
 
     epsilon_i = epsilon0 if warm_start else epsilon
-    dx = np.ones(C.shape[0]) / C.shape[0]
-    dy = np.ones(C.shape[1]) / C.shape[1]
+    
+    dx = w0
+    dy = w1
+    
+    # dx = np.ones(C.shape[0]) / C.shape[0]
+    # dy = np.ones(C.shape[1]) / C.shape[1]
 
     p = G
     q = np.ones(C.shape[1]) * np.average(G)
@@ -231,6 +240,7 @@ def transport_stablev2(C, lambda1, lambda2, epsilon, scaling_iter, G, tau, epsil
         a = (p / (K.dot(np.multiply(b, dy)))) ** alpha1 * np.exp(-u / (lambda1 + epsilon_i))
         b = (q / (K.T.dot(np.multiply(a, dx)))) ** alpha2 * np.exp(-v / (lambda2 + epsilon_i))
 
+    # CHANGE HERE
     R = (K.T * a).T * b
 
     return R / C.shape[1]

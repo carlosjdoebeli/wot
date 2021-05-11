@@ -35,12 +35,13 @@ class OTModel:
     """
 
     def __init__(self, matrix, day_field='day', covariate_field='covariate',
-                 growth_rate_field='cell_growth_rate', **kwargs):
+                 growth_rate_field='cell_growth_rate', weight_field='weights', **kwargs):
         self.matrix = matrix
         self.day_field = day_field
         self.covariate_field = covariate_field
         self.cell_growth_rate_field = growth_rate_field
         self.day_pairs = wot.ot.parse_configuration(kwargs.pop('config', None))
+        self.weight_field = weight_field
         cell_filter = kwargs.pop('cell_filter', None)
         gene_filter = kwargs.pop('gene_filter', None)
         day_filter = kwargs.pop('cell_day_filter', None)
@@ -284,6 +285,18 @@ class OTModel:
         p0 = ds[p0_indices, :]
         p1 = ds[p1_indices, :]
 
+        if config['w0'] is None:
+            w0 = np.ones(len(p0)) / len(p0)
+            if self.weight_field in ds.obs.columns:
+                w0 = p0.obs['weight'].to_numpy()
+            config['w0'] = w0
+
+        if config['w1'] is None:
+            w1 = np.ones(len(p1)) / len(p1)
+            if self.weight_field in ds.obs.columns:
+                w1 = p1.obs['weight'].to_numpy()
+            config['w1'] = w1
+        
         if p0.shape[0] == 0:
             logger.info('No cells at {}'.format(t0))
             return None
