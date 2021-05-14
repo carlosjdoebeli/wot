@@ -109,7 +109,7 @@ def optimal_transport_duality_gap(C, G, lambda1, lambda2, epsilon, batch_size, t
     # dx, dy = np.ones(I) / I, np.ones(J) / J
 
     p = G
-    q = dy * np.multiply(p,dx).sum()
+    q = np.ones(C.shape[1]) * np.multiply(p,dx).sum()
     # q = np.ones(C.shape[1]) * np.average(G)
 
     u, v = np.zeros(I), np.zeros(J)
@@ -199,7 +199,7 @@ def transport_stablev2(C, lambda1, lambda2, epsilon, scaling_iter, G, tau, epsil
     # dy = np.ones(C.shape[1]) / C.shape[1]
 
     p = G
-    q = dy * np.multiply(p,dx).sum()
+    q = np.ones(C.shape[1]) * np.multiply(p,dx).sum()
     # q = np.ones(C.shape[1]) * np.average(G)
 
     u = np.zeros(len(p))
