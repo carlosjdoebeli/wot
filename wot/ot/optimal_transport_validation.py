@@ -89,8 +89,8 @@ def compute_validation_summary(ot_model, day_triplets=None, interp_size=10000, c
         if compute_full_distances:
             tmap_full = ot_model.compute_transport_map(t0, t1)
 
-            def update_full_summary(pop, t, name, pop2=p05_ds.X):
-                dist = wot.ot.earth_mover_distance(pop, pop2, eigenvals if local_pca > 0 else None)
+            def update_full_summary(pop, t, name, pop2=p05_ds.X, w1=None, w2=None):
+                dist = wot.ot.earth_mover_distance(pop, pop2, eigenvals if local_pca > 0 else None,weights1=w1, weights2=w2)
                 summary_list.append(
                     {'interval_start': t0,
                      'interval_mid': t05,
@@ -107,13 +107,13 @@ def compute_validation_summary(ot_model, day_triplets=None, interp_size=10000, c
                 r05_with_growth = wot.ot.interpolate_randomly_with_growth(p0_ds.X, p1_ds.X, interp_frac, interp_size,
                                                                           p0_ds.obs[
                                                                               ot_model.cell_growth_rate_field].values ** (
-                                                                              interp_frac))
+                                                                              interp_frac), w0=p0_ds.obs[ot_model.weight_field].values, w1=p1_ds.obs[ot_model.weight_field].values)
                 update_full_summary(r05_with_growth, t05, 'Rg')
             r05_no_growth = wot.ot.interpolate_randomly(p0_ds.X, p1_ds.X, interp_frac, interp_size)
             update_full_summary(r05_no_growth, t05, 'R')
             try:
                 i05 = wot.ot.interpolate_with_ot(p0_ds.X, p1_ds.X, tmap_full.X, interp_frac,
-                                                 interp_size)  # TODO handle downsampling cells case
+                                                 interp_size, weight=p0_ds.obs[ot_model.weight_field].values)  # TODO handle downsampling cells case
                 update_full_summary(i05, t05, 'I')
                 update_full_summary(i05, t05, 'I1', p0_ds.X)
                 update_full_summary(i05, t05, 'I2', p1_ds.X)
@@ -134,8 +134,8 @@ def compute_validation_summary(ot_model, day_triplets=None, interp_size=10000, c
             seen_first = set()
             seen_last = set()
 
-            def distance_to_p05(pop, t, name, cv):
-                dist = wot.ot.earth_mover_distance(pop, p05_x, eigenvals if local_pca > 0 else None)
+            def distance_to_p05(pop, t, name, cv, w1=None, w2=None):
+                dist = wot.ot.earth_mover_distance(pop, p05_x, eigenvals if local_pca > 0 else None, weights1=w1, weights2=w2)
                 summary_list.append(
                     {'interval_start': t0,
                      'interval_mid': t05,
@@ -165,16 +165,16 @@ def compute_validation_summary(ot_model, day_triplets=None, interp_size=10000, c
                 # p1_x = wot.ot.pca_transform(pca, mean, p1[cv1].X)
                 p0_x = p0[cv0].X
                 p1_x = p1[cv1].X
-                i05 = wot.ot.interpolate_with_ot(p0_x, p1_x, tmap.X, interp_frac, interp_size)
+                i05 = wot.ot.interpolate_with_ot(p0_x, p1_x, tmap.X, interp_frac, interp_size, weight=p0[cv0].obs[ot_model.weight_field].values)
                 if ot_model.cell_growth_rate_field in ot_model.matrix.obs:
                     r05_with_growth = wot.ot.interpolate_randomly_with_growth(p0_x, p1_x, interp_frac, interp_size,
                                                                               p0[cv0].obs[
                                                                                   ot_model.cell_growth_rate_field].values ** (
-                                                                                  interp_frac))
-                    distance_to_p05(r05_with_growth, t05, 'Rg', (cv0, cv1))
+                                                                                  interp_frac), w0=p0[cv0].obs[ot_model.weight_field].values, w1=p1[cv1].obs[ot_model.weight_field].values)
+                    distance_to_p05(r05_with_growth, t05, 'Rg', (cv0, cv1), w2=p05[cv05].obs[ot_model.weight_field].values)
 
                 r05_no_growth = wot.ot.interpolate_randomly(p0_x, p1_x, interp_frac, interp_size)
-                distance_to_p05(i05, t05, 'I', (cv0, cv1))
+                distance_to_p05(i05, t05, 'I', (cv0, cv1), w2=p05[cv05].obs[ot_model.weight_field].values)
 
                 distance_to_p05(r05_no_growth, t05, 'R', (cv0, cv1))
 

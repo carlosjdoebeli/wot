@@ -106,7 +106,7 @@ def sample_from_transport_map(exp1, exp2, tm, npairs, t_interpolate):
             'weights': weights}
 
 
-def interpolate_with_ot(p0, p1, tmap, interp_frac, size):
+def interpolate_with_ot(p0, p1, tmap, interp_frac, size, weight=None):
     """
     Interpolate between p0 and p1 at fraction t_interpolate knowing a transport map from p0 to p1
 
@@ -128,6 +128,14 @@ def interpolate_with_ot(p0, p1, tmap, interp_frac, size):
     p05 : 2-D array
         An interpolated population of 'size' cells
     """
+    I = len(p0)
+    J = len(p1)
+    
+    if weight is None:
+        weight = np.ones(I) / I
+        
+    dx = np.ones(I) / I
+    
     p0 = p0.toarray() if scipy.sparse.isspmatrix(p0) else p0
     p1 = p1.toarray() if scipy.sparse.isspmatrix(p1) else p1
     p0 = np.asarray(p0, dtype=np.float64)
@@ -138,10 +146,21 @@ def interpolate_with_ot(p0, p1, tmap, interp_frac, size):
     if p0.shape[0] != tmap.shape[0] or p1.shape[0] != tmap.shape[1]:
         raise ValueError("Unable to interpolate. Tmap size is {}, expected {}"
                          .format(tmap.shape, (len(p0), len(p1))))
-    I = len(p0);
-    J = len(p1)
-    # Assume growth is exponential and retrieve growth rate at t_interpolate
-    p = tmap / np.power(tmap.sum(axis=0), 1. - interp_frac)
+    if p0.shape[0] != len(weight):
+        raise ValueError("Unable to interpolate. Weight size is {}, expected {}"
+                         .format(len(weight), len(p0)))
+    
+                         
+                         
+    # Assume growth is exponential and retrieve growth rate at t_interpolate                
+    ratio = np.divide(weight, (np.ones(I) / I))                    
+
+    p = tmap / ratio[:,None]
+    p = p / np.power(tmap.sum(axis=0), 1. - interp_frac)
+    p = p * ratio[:,None]
+
+
+#     p = tmap / np.power(tmap.sum(axis=0), 1. - interp_frac)    
     p = p.flatten(order='C')
     p = p / p.sum()
     choices = np.random.choice(I * J, p=p, size=size)
@@ -181,14 +200,29 @@ def interpolate_randomly(p0, p1, t_interpolate, size):
     return np.asarray([p0[i // J] * (1 - t) + p1[i % J] * t for i in choices], dtype=np.float64)
 
 
-def interpolate_randomly_with_growth(p0, p1, t, size, g):
+def interpolate_randomly_with_growth(p0, p1, t, size, g, w0=None, w1=None):
     p0 = p0.toarray() if scipy.sparse.isspmatrix(p0) else p0
     p1 = p1.toarray() if scipy.sparse.isspmatrix(p1) else p1
     p0 = np.asarray(p0, dtype=np.float64)
     p1 = np.asarray(p1, dtype=np.float64)
+    
+    I = len(p0)
+    J = len(p1)
+    
+    if w0 is None:
+        w0 = np.ones(I) / I
+    
+    if w1 is None:
+        w1 = np.ones(J) / J
+        
+    dx, dy = np.ones(I) / I, np.ones(J) / J
 
-    p = g
-    q = np.ones(p1.shape[0]) * np.average(g)
+    p = np.multiply(g, np.divide(w0, dx))
+    q = np.ones(J) * np.average(p)
+    q = np.multiply(q, np.divide(w1, dy))
+    
+#     p = g
+#     q = np.ones(p1.shape[0]) * np.average(g)
 
     p = np.outer(p, q)
     p = p.flatten(order='C')

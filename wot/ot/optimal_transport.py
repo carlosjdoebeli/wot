@@ -99,18 +99,25 @@ def optimal_transport_duality_gap(C, G, lambda1, lambda2, epsilon, batch_size, t
     """
     C = np.asarray(C, dtype=np.float64)
     epsilon_scalings = 5
+    
+    # THIS LINE HAS BEEN CHANGED
+    scale_factor = np.exp(- np.log(epsilon/epsilon0) / epsilon_scalings)
     scale_factor = np.exp(- np.log(epsilon) / epsilon_scalings)
-
+    
     # HERE IS THE CHANGE/EMPIRICAL DISTRIBUTION
-    dx = w0
-    dy = w1
+#     dx = w0
+#     dy = w1
 
     I, J = C.shape
-    # dx, dy = np.ones(I) / I, np.ones(J) / J
+    dx, dy = np.ones(I) / I, np.ones(J) / J
 
-    p = G
-    q = np.ones(C.shape[1]) * np.multiply(p,dx).sum()
-    # q = np.ones(C.shape[1]) * np.average(G)
+#     p = G
+#     q = np.ones(C.shape[1]) * np.multiply(p,dx).sum()
+#     q = np.ones(C.shape[1]) * np.average(G)
+
+    p = np.multiply(G, np.divide(w0, dx))
+    q = np.ones(C.shape[1]) * np.average(p)
+    q = np.multiply(q, np.divide(w1, dy))
 
     u, v = np.zeros(I), np.zeros(J)
     a, b = np.ones(I), np.ones(J)
@@ -132,6 +139,7 @@ def optimal_transport_duality_gap(C, G, lambda1, lambda2, epsilon, batch_size, t
         threshold = tolerance if e == epsilon_scalings else 1e-6
 
         while duality_gap > threshold:
+                
             for i in range(batch_size if e == epsilon_scalings else 5):
                 current_iter += 1
                 old_a, old_b = a, b
@@ -158,7 +166,9 @@ def optimal_transport_duality_gap(C, G, lambda1, lambda2, epsilon, batch_size, t
                 R = (K.T * a).T * b
                 pri = primal(C, _K, R, dx, dy, p, q, _a, _b, epsilon_i, lambda1, lambda2)
                 dua = dual(C, _K, R, dx, dy, p, q, _a, _b, epsilon_i, lambda1, lambda2)
+
                 duality_gap = (pri - dua) / abs(pri)
+                
             else:
                 duality_gap = max(
                     np.linalg.norm(_a - old_a * np.exp(u / epsilon_i)) / (1 + np.linalg.norm(_a)),
@@ -166,7 +176,7 @@ def optimal_transport_duality_gap(C, G, lambda1, lambda2, epsilon, batch_size, t
 
     if np.isnan(duality_gap):
         raise RuntimeError("Overflow encountered in duality gap computation, please report this incident")
-    # CHANGE HERE
+
     return R / C.shape[1]
 
 
@@ -192,15 +202,20 @@ def transport_stablev2(C, lambda1, lambda2, epsilon, scaling_iter, G, tau, epsil
 
     epsilon_i = epsilon0 if warm_start else epsilon
     
-    dx = w0
-    dy = w1
-    
-    # dx = np.ones(C.shape[0]) / C.shape[0]
-    # dy = np.ones(C.shape[1]) / C.shape[1]
+    # HERE IS THE CHANGE/EMPIRICAL DISTRIBUTION
+#     dx = w0
+#     dy = w1
 
-    p = G
-    q = np.ones(C.shape[1]) * np.multiply(p,dx).sum()
-    # q = np.ones(C.shape[1]) * np.average(G)
+    dx = np.ones(C.shape[0]) / C.shape[0]
+    dy = np.ones(C.shape[1]) / C.shape[1]
+
+#     p = G
+#     q = np.ones(C.shape[1]) * np.multiply(p,dx).sum()
+#     q = np.ones(C.shape[1]) * np.average(G)
+
+    p = np.multiply(G, np.divide(w0, dx))
+    q = np.ones(C.shape[1]) * np.average(p)
+    q = np.multiply(q, np.divide(w1, dy))
 
     u = np.zeros(len(p))
     v = np.zeros(len(q))

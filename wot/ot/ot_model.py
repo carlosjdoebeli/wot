@@ -35,7 +35,7 @@ class OTModel:
     """
 
     def __init__(self, matrix, day_field='day', covariate_field='covariate',
-                 growth_rate_field='cell_growth_rate', weight_field='weights', **kwargs):
+                 growth_rate_field='cell_growth_rate', weight_field='weight', **kwargs):
         self.matrix = matrix
         self.day_field = day_field
         self.covariate_field = covariate_field
@@ -284,18 +284,6 @@ class OTModel:
 
         p0 = ds[p0_indices, :]
         p1 = ds[p1_indices, :]
-
-        if config.get('w0') is None:
-            w0 = np.ones(len(p0)) / len(p0)
-            if self.weight_field in ds.obs.columns:
-                w0 = p0.obs['weight'].to_numpy()
-            config['w0'] = w0
-
-        if config.get('w1') is None:
-            w1 = np.ones(len(p1)) / len(p1)
-            if self.weight_field in ds.obs.columns:
-                w1 = p1.obs['weight'].to_numpy()
-            config['w1'] = w1
         
         if p0.shape[0] == 0:
             logger.info('No cells at {}'.format(t0))
@@ -303,6 +291,20 @@ class OTModel:
         if p1.shape[0] == 0:
             logger.info('No cells at {}'.format(t1))
             return None
+        
+        if config.get('w0') is None:
+            w0 = np.ones(len(p0)) / len(p0)
+            if self.weight_field in ds.obs.columns:
+                w0 = p0.obs['weight'].to_numpy()
+            w0 = w0 / w0.sum()
+            config['w0'] = w0
+
+        if config.get('w1') is None:
+            w1 = np.ones(len(p1)) / len(p1)
+            if self.weight_field in ds.obs.columns:
+                w1 = p1.obs['weight'].to_numpy()
+            w1 = w1 / w1.sum()
+            config['w1'] = w1
 
         local_pca = config.pop('local_pca', None)
         eigenvals = None
